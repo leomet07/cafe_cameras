@@ -1,16 +1,14 @@
 import cv2
+import json
 cv2_version = cv2.__version__
 
 import numpy as np
 from multiprocessing import Process, Value
 
-connection_urls = []
+cameras = []
 
-with open("urls.txt", "r") as file:
-    for line in file.readlines():
-        clean = line.strip()
-        if not(clean.startswith("#")):
-            connection_urls.append(clean)
+with open("cameras.json", "r") as file:
+    cameras = json.load(file)
 
 streams = []
 
@@ -76,7 +74,8 @@ def stream_func(connection_url, run):
 if __name__ == "__main__":
     run = Value('b', True) # Global variable for controlling if the program is running
 
-    for url in connection_urls:
+    for camera in cameras:
+        url = camera["url"]
         streams.append({ "process" : Process(target=stream_func, args=(url, run )), "url" : url} ) # Create processes
 
     for stream in streams:
