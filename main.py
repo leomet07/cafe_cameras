@@ -12,13 +12,26 @@ with open("cameras.json", "r") as file:
 
 streams = []
 
-def stream_func(connection_url, run):
+def stream_func(connection_url, run, dimensions):
     cap = cv2.VideoCapture(connection_url)
 
     prev_frame = None
     while cap.isOpened() and run.value:
         _, frame = cap.read()
         
+        if not(dimensions is None):
+            top_left_point = dimensions["top_left_point"]
+
+            height = dimensions["height"]
+            width = dimensions["width"]
+            max_height, max_width, _ = frame.shape
+            if height == 0:
+                height = max_height
+            if width == 0:
+                width = max_width
+
+            frame = frame[top_left_point["y"]:top_left_point["y"] + height, top_left_point["x"]:top_left_point["x"] + width]
+
         if prev_frame is None:
             prev_frame = frame
             continue
@@ -76,7 +89,8 @@ if __name__ == "__main__":
 
     for camera in cameras:
         url = camera["url"]
-        streams.append({ "process" : Process(target=stream_func, args=(url, run )), "url" : url} ) # Create processes
+        dimensions =  camera["dimensions"] if "dimensions" in camera else None
+        streams.append({ "process" : Process(target=stream_func, args=(url, run, dimensions)), "url" : url} ) # Create processes
 
     for stream in streams:
         stream["process"].start() # Start all processes
