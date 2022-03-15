@@ -20,6 +20,14 @@ def stream_func(connection_url, run, dimensions):
         _, frame = cap.read()
         
         if not(dimensions is None):
+            if "scale" in dimensions:
+                xscale = float(dimensions["scale"]["x"])
+                yscale = float(dimensions["scale"]["x"])
+
+                resizewidth = int(frame.shape[1] * xscale)
+                resizeheight = int(frame.shape[0] * yscale)
+                frame = cv2.resize(frame, (resizewidth, resizeheight))
+
             top_left_point = dimensions["top_left_point"]
 
             height = dimensions["height"]
@@ -43,7 +51,7 @@ def stream_func(connection_url, run, dimensions):
         
         blur = cv2.GaussianBlur(gray, (5, 5), 0) # converting grayscale difference to GaussianBlur (easier to find change)
         
-        _, thresh = cv2.threshold(blur, 30, 255, cv2.THRESH_BINARY) # if pixel value is greater than val, it is assigned white(255) otherwise black
+        _, thresh = cv2.threshold(blur, 35, 255, cv2.THRESH_BINARY) # if pixel value is greater than val, it is assigned white(255) otherwise black
         dilated = cv2.dilate(thresh, None, iterations=4)
 
         # finding contours of moving object
@@ -88,6 +96,11 @@ if __name__ == "__main__":
     run = Value('b', True) # Global variable for controlling if the program is running
 
     for camera in cameras:
+        if "use" in camera: 
+            use_bool = bool(camera["use"]) 
+            if not(use_bool): # Only if the use flag is explicitly set to false is the camera ignored
+                continue
+
         url = camera["url"]
         dimensions =  camera["dimensions"] if "dimensions" in camera else None
         streams.append({ "process" : Process(target=stream_func, args=(url, run, dimensions)), "url" : url} ) # Create processes
@@ -97,5 +110,5 @@ if __name__ == "__main__":
 
     for stream in streams:
         stream["process"].join() # Wait for all processes to finish before terminating program
-        print("Stream with url of " + stream["url"] + " finished.")
+        # print("Stream with url of " + stream["url"] + " finished.")
 
