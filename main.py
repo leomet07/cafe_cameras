@@ -44,14 +44,14 @@ def stream_func(connection_url, run, dimensions):
             prev_frame = frame
             continue
 
+        diff = cv2.absdiff(frame, prev_frame) # difference between frame and current frame
         
-        diff = cv2.absdiff(prev_frame, frame) # difference between frame and current frame
         
-        gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY) # make difference greyscale
+        gray= cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY) # make difference greyscale
         
         blur = cv2.GaussianBlur(gray, (5, 5), 0) # converting grayscale difference to GaussianBlur (easier to find change)
         
-        _, thresh = cv2.threshold(blur, 35, 255, cv2.THRESH_BINARY) # if pixel value is greater than val, it is assigned white(255) otherwise black
+        _, thresh = cv2.threshold(blur, 30, 255, cv2.THRESH_BINARY) # if pixel value is greater than val, it is assigned white(255) otherwise black
         dilated = cv2.dilate(thresh, None, iterations=4)
 
         # finding contours of moving object
@@ -65,21 +65,23 @@ def stream_func(connection_url, run, dimensions):
             )
 
         detected = False
-
+        display_frame = frame.copy()
         for contour in contours:
             (x, y, w, h) = cv2.boundingRect(contour)
-            if cv2.contourArea(contour) < 3000:
+            if cv2.contourArea(contour) < 3000 or cv2.contourArea(contour) > 10000 :
                 continue
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 20), 2)
+            cv2.rectangle(display_frame, (x, y), (x + w, y + h), (0, 255, 20), 2)
             detected = True
 
-        drawn_thresh = cv2.add(frame, frame, mask=thresh) # Difference frame 
-        both = np.concatenate((frame, drawn_thresh), axis=0)
+        drawn_thresh = cv2.add(display_frame, display_frame, mask=thresh) # Difference frame 
+        both = np.concatenate((display_frame, drawn_thresh), axis=0)
 
         both = cv2.resize(both, (0, 0), fx=0.7, fy=0.7)
 
+        prev_frame = frame.copy()
+
         # cv2.imshow("Feed", both)
-        cv2.imshow("Feed", frame)
+        cv2.imshow("Feed", display_frame)
 
         key = cv2.waitKey(1)
 
