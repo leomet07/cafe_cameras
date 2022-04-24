@@ -1,6 +1,7 @@
-import cv2
+import cv2 # opencv-contrib-python is needed !!
 import json
 cv2_version = cv2.__version__
+
 
 import numpy as np
 from multiprocessing import Process, Value
@@ -16,9 +17,15 @@ def stream_func(connection_url, run, dimensions):
     cap = cv2.VideoCapture(connection_url)
 
     prev_frame = None
+
+    
+    motion_history = None
+
+    timestamp = 0
+
     while cap.isOpened() and run.value:
         _, frame = cap.read()
-        
+        timestamp += 1
         if not(dimensions is None):
             if "scale" in dimensions:
                 xscale = float(dimensions["scale"]["x"])
@@ -27,6 +34,7 @@ def stream_func(connection_url, run, dimensions):
                 resizewidth = int(frame.shape[1] * xscale)
                 resizeheight = int(frame.shape[0] * yscale)
                 frame = cv2.resize(frame, (resizewidth, resizeheight))
+
 
             top_left_point = dimensions["top_left_point"]
 
@@ -39,6 +47,9 @@ def stream_func(connection_url, run, dimensions):
                 width = max_width
 
             frame = frame[top_left_point["y"]:top_left_point["y"] + height, top_left_point["x"]:top_left_point["x"] + width]
+
+            if motion_history is None:
+                motion_history = np.zeros((frame.shape[0], frame.shape[1]), np.float32)
 
         if prev_frame is None:
             prev_frame = frame
@@ -53,6 +64,8 @@ def stream_func(connection_url, run, dimensions):
         
         _, thresh = cv2.threshold(blur, 30, 255, cv2.THRESH_BINARY) # if pixel value is greater than val, it is assigned white(255) otherwise black
         dilated = cv2.dilate(thresh, None, iterations=4)
+
+        cv2.motempl.updateMotionHistory(dilated, motion_history, timestamp, 10) # 10 is the max history
 
         # finding contours of moving object
         if str(cv2_version).startswith("3"):
@@ -81,7 +94,8 @@ def stream_func(connection_url, run, dimensions):
         prev_frame = frame.copy()
 
         # cv2.imshow("Feed", both)
-        cv2.imshow("Feed", display_frame)
+        cv2.imshow("Feed", motion_history)
+        # cv2.imshow("Feed", display_frame)
 
         key = cv2.waitKey(1)
 
@@ -92,6 +106,8 @@ def stream_func(connection_url, run, dimensions):
     cap.release()
 
     cv2.destroyAllWindows()
+
+    
 
 
 if __name__ == "__main__":
