@@ -18,7 +18,6 @@ def stream_func(connection_url, run, dimensions):
 
     prev_frame = None
 
-    
     motion_history = None
 
     timestamp = 0
@@ -67,34 +66,39 @@ def stream_func(connection_url, run, dimensions):
 
         cv2.motempl.updateMotionHistory(dilated, motion_history, timestamp, 10) # 10 is the max history
 
+        motion_countours = motion_history.astype(np.uint8)
+
+        
+        to_detect_contours = motion_countours
+
         # finding contours of moving object
         if str(cv2_version).startswith("3"):
             _, contours, hirarchy = cv2.findContours(
-                dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
+                to_detect_contours, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
             )
         else: # For version 4
             contours, hirarchy = cv2.findContours(
-                dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
+                to_detect_contours, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
             )
 
-        detected = False
+        
         display_frame = frame.copy()
         for contour in contours:
             (x, y, w, h) = cv2.boundingRect(contour)
-            if cv2.contourArea(contour) < 3000 or cv2.contourArea(contour) > 10000 :
+            if cv2.contourArea(contour) < 3000  : # or cv2.contourArea(contour) > 10000
                 continue
             cv2.rectangle(display_frame, (x, y), (x + w, y + h), (0, 255, 20), 2)
-            detected = True
 
-        drawn_thresh = cv2.add(display_frame, display_frame, mask=thresh) # Difference frame 
-        both = np.concatenate((display_frame, drawn_thresh), axis=0)
+        
+        motion_history_img = cv2.merge((motion_countours, motion_countours, motion_countours))
+        both = np.concatenate((display_frame, motion_history_img), axis=0)
 
         both = cv2.resize(both, (0, 0), fx=0.7, fy=0.7)
 
         prev_frame = frame.copy()
 
-        # cv2.imshow("Feed", both)
-        cv2.imshow("Feed", motion_history)
+        cv2.imshow("Both", both)
+        # cv2.imshow("Motion History", motion_history_img)
         # cv2.imshow("Feed", display_frame)
 
         key = cv2.waitKey(1)
