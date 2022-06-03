@@ -19,3 +19,9 @@ notes.txt
 cameras.json
 
 .idea
+
+*.avi
+
+*.mp4
+
+*.mpv

@@ -13,12 +13,14 @@ with open("cameras.json", "r") as file:
 
 streams = []
 
-def stream_func(connection_url, run, dimensions):
+def stream_func(connection_url, run, dimensions, index):
     cap = cv2.VideoCapture(connection_url)
 
     prev_frame = None
 
     motion_history = None
+
+    videowritier = None
 
     timestamp = 0
 
@@ -50,6 +52,9 @@ def stream_func(connection_url, run, dimensions):
             if motion_history is None:
                 motion_history = np.zeros((frame.shape[0], frame.shape[1]), np.float32)
 
+            if videowritier is None:
+                videowritier = cv2.VideoWriter("output_" + str(index) + ".avi" ,cv2.VideoWriter_fourcc('M','J','P','G'), 10, (frame.shape[1],frame.shape[0]))
+
         if prev_frame is None:
             prev_frame = frame
             continue
@@ -64,7 +69,7 @@ def stream_func(connection_url, run, dimensions):
         _, thresh = cv2.threshold(blur, 30, 255, cv2.THRESH_BINARY) # if pixel value is greater than val, it is assigned white(255) otherwise black
         dilated = cv2.dilate(thresh, None, iterations=4)
 
-        cv2.motempl.updateMotionHistory(dilated, motion_history, timestamp, 10) # 10 is the max history
+        cv2.motempl.updateMotionHistory(dilated, motion_history, timestamp, 3) # 10 is the max history
 
         motion_countours = motion_history.astype(np.uint8)
 
@@ -85,7 +90,7 @@ def stream_func(connection_url, run, dimensions):
         display_frame = frame.copy()
         for contour in contours:
             (x, y, w, h) = cv2.boundingRect(contour)
-            if cv2.contourArea(contour) < 3000  : # or cv2.contourArea(contour) > 10000
+            if cv2.contourArea(contour) < 3000 or cv2.contourArea(contour) > 200000 : 
                 continue
             cv2.rectangle(display_frame, (x, y), (x + w, y + h), (0, 255, 20), 2)
 
@@ -98,10 +103,13 @@ def stream_func(connection_url, run, dimensions):
         prev_frame = frame.copy()
 
         cv2.imshow("Both", both)
+        
         # cv2.imshow("Motion History", motion_history_img)
         # cv2.imshow("Feed", display_frame)
 
         key = cv2.waitKey(1)
+
+        videowritier.write(frame)
 
         if key == ord("q") or key == 27:
             run.value = False   
@@ -117,7 +125,8 @@ def stream_func(connection_url, run, dimensions):
 if __name__ == "__main__":
     run = Value('b', True) # Global variable for controlling if the program is running
 
-    for camera in cameras:
+    for index in range(len(cameras)):
+        camera = cameras[index]
         if "use" in camera: 
             use_bool = bool(camera["use"]) 
             if not(use_bool): # Only if the use flag is explicitly set to false is the camera ignored
@@ -125,7 +134,7 @@ if __name__ == "__main__":
 
         url = camera["url"]
         dimensions =  camera["dimensions"] if "dimensions" in camera else None
-        streams.append({ "process" : Process(target=stream_func, args=(url, run, dimensions)), "url" : url} ) # Create processes
+        streams.append({ "process" : Process(target=stream_func, args=(url, run, dimensions, index)), "url" : url} ) # Create processes
 
     for stream in streams:
         stream["process"].start() # Start all processes
