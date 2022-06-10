@@ -4,7 +4,7 @@ cv2_version = cv2.__version__
 
 
 import numpy as np
-from multiprocessing import Process, Value
+from multiprocessing import Process, Value, Array
 
 cameras = []
 
@@ -13,7 +13,7 @@ with open("cameras.json", "r") as file:
 
 streams = []
 
-def stream_func(connection_url : str, run : bool, dimensions, index: int, record: bool):
+def stream_func(connection_url : str, run : bool, dimensions, index: int, record: bool, pedestrian_count : Array):
     cap = cv2.VideoCapture(connection_url)
 
     prev_frame = None
@@ -25,7 +25,7 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
     timestamp = 0
     cooldowns = []
 
-    pedestrian_count = 0
+    
     while cap.isOpened() and run.value:
         ret, frame = cap.read()
         if not ret:
@@ -151,12 +151,12 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
                 })
                 
                 print("Middle has been reached. Timestamp: ", timestamp)
-                pedestrian_count += 1
-                print("Passed pedestrians: ", pedestrian_count)
+                pedestrian_count[index] += 1
+                print("Passed pedestrians: ", pedestrian_count[index])
             cv2.rectangle(display_frame, (x1, y1), (x2, y2), (0, 255, 20), 2)
 
         # Draw text onto display frame
-        display_frame= cv2.putText(display_frame, text=str("Pedestrians passed: " + str(pedestrian_count)), org=(20, frame.shape[0] - 30), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0),thickness=2)
+        display_frame= cv2.putText(display_frame, text=str("Pedestrians passed: " + str(pedestrian_count[index])), org=(20, frame.shape[0] - 30), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0),thickness=2)
         # Horizontal midpoint
         display_frame = cv2.line(display_frame, (mframe, 0), (mframe, frame.shape[0] - 1), (0, 0, 255), 1)
 
@@ -196,6 +196,7 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
 
 if __name__ == "__main__":
     run = Value('b', True) # Global variable for controlling if the program is running
+    pedestrian_count = Array('i', [0] * len(cameras))
 
     for index in range(len(cameras)):
         camera = cameras[index]
@@ -206,7 +207,7 @@ if __name__ == "__main__":
 
         url : str = str(camera["url"])
         dimensions =  camera["dimensions"] if "dimensions" in camera else None
-        streams.append({ "process" : Process(target=stream_func, args=(url, run, dimensions, index, False)), "url" : url} ) # Create processes
+        streams.append({ "process" : Process(target=stream_func, args=(url, run, dimensions, index, False, pedestrian_count)), "url" : url} ) # Create processes
 
     for stream in streams:
         stream["process"].start() # Start all processes
@@ -215,3 +216,13 @@ if __name__ == "__main__":
         stream["process"].join() # Wait for all processes to finish before terminating program
         # print("Stream with url of " + stream["url"] + " finished.")
 
+    with open("output.json", "w") as outputfile:
+        outputdict = []
+        for index in range(len(pedestrian_count)):
+            count = pedestrian_count[index]
+            camera = cameras[index]
+            outputdict.append({
+                "url" : camera["url"],
+                "count" : count
+            })
+        json.dump(outputdict, outputfile)
