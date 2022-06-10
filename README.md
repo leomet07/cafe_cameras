@@ -1,3 +1,3 @@
 # Project
 
-This repo helped with inspiratio and setup: https://github.com/jerinka/imshow_docker
+[This repo](https://github.com/jerinka/imshow_docker) helped with inspiration and setup of the docker container.

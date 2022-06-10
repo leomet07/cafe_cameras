@@ -25,7 +25,7 @@ WORKDIR /project
 
 RUN pip install --upgrade pip
 
-RUN pip install --no-cache-dir opencv-python
+RUN pip install --no-cache-dir opencv-contrib-python
 
 # Minimize image size 
 RUN (apt-get autoremove -y; \
