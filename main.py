@@ -133,10 +133,9 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
                         overlap = True
                         break # out of inner for loop
                 
-
                 if overlap:
                     break # Not valid to count, so exit
-                print("In middle")
+                
                 # reset motion history
                 motion_history = np.zeros((frame.shape[0], frame.shape[1]), np.float32)
                 # , however next frame's motion will still detect a difference, so we flag next frame
@@ -151,7 +150,7 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
                     }
                 })
                 
-                print(mx, mframe, "Timestamp: ", timestamp)
+                print("Middle has been reached. Timestamp: ", timestamp)
                 pedestrian_count += 1
                 print("Passed pedestrians: ", pedestrian_count)
             cv2.rectangle(display_frame, (x1, y1), (x2, y2), (0, 255, 20), 2)
@@ -174,7 +173,7 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
 
         prev_frame = frame.copy()
 
-        cv2.imshow("Both", both)
+        cv2.imshow("Motion feed", both)
         
         # cv2.imshow("Motion History", motion_history_img)
         # cv2.imshow("Feed", display_frame)
