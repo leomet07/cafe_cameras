@@ -87,7 +87,7 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
         _, thresh = cv2.threshold(blur, 30, 255, cv2.THRESH_BINARY) # if pixel value is greater than val, it is assigned white(255) otherwise black
         dilated = cv2.dilate(thresh, None, iterations=4)
 
-        cv2.motempl.updateMotionHistory(dilated, motion_history, timestamp, 10) # 10 is the max history
+        cv2.motempl.updateMotionHistory(dilated, motion_history, timestamp, 4) # 10 is the max history
 
         motion_countours = motion_history.astype(np.uint8)
 
