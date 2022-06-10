@@ -25,6 +25,7 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
     timestamp = 0
     cooldowns = []
 
+    pedestrian_count = 0
     while cap.isOpened() and run.value:
         ret, frame = cap.read()
         if not ret:
@@ -105,6 +106,9 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
 
         wait_val = 1
         display_frame = frame.copy()
+
+        mframe = round(frame.shape[1] / 2) # Middle of the frame
+
         for contour in contours:
             (x1, y1, w, h) = cv2.boundingRect(contour)
             if cv2.contourArea(contour) < 3000 or cv2.contourArea(contour) > 200000 : 
@@ -113,8 +117,7 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
             y2 = y1 + h
 
             mx = round((x1 + x2) / 2)
-            mframe = round(frame.shape[1] / 2)
-
+    
             if (abs(mframe - mx) <= 10):
                 # wait_val = 0 # To pause the program
                 
@@ -149,11 +152,23 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
                 })
                 
                 print(mx, mframe, "Timestamp: ", timestamp)
+                pedestrian_count += 1
+                print("Passed pedestrians: ", pedestrian_count)
             cv2.rectangle(display_frame, (x1, y1), (x2, y2), (0, 255, 20), 2)
 
+        # Draw text onto display frame
+        display_frame= cv2.putText(display_frame, text=str("Pedestrians passed: " + str(pedestrian_count)), org=(20, frame.shape[0] - 30), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0),thickness=2)
+        # Horizontal midpoint
+        display_frame = cv2.line(display_frame, (mframe, 0), (mframe, frame.shape[0] - 1), (0, 0, 255), 1)
+
         
+
         motion_history_img = cv2.merge((motion_countours, motion_countours, motion_countours))
+        
+        
         both = np.concatenate((display_frame, motion_history_img), axis=0)
+        # Splitting the middle of the two frames
+        both = cv2.line(both, (0, frame.shape[0] - 1 ), (both.shape[1] - 1, frame.shape[0] - 1), (255, 0, 0), 1)
 
         both = cv2.resize(both, (0, 0), fx=0.7, fy=0.7)
 
