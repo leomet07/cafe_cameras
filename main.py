@@ -13,7 +13,7 @@ with open("cameras.json", "r") as file:
 
 streams = []
 
-def stream_func(connection_url, run, dimensions, index):
+def stream_func(connection_url, run, dimensions, index, record):
     cap = cv2.VideoCapture(connection_url)
 
     prev_frame = None
@@ -69,7 +69,7 @@ def stream_func(connection_url, run, dimensions, index):
             if motion_history is None:
                 motion_history = np.zeros((frame.shape[0], frame.shape[1]), np.float32)
 
-            if videowritier is None:
+            if record and videowritier is None:
                 videowritier = cv2.VideoWriter("output_" + str(index) + ".avi" ,cv2.VideoWriter_fourcc('M','J','P','G'), 10, (frame.shape[1],frame.shape[0]))
 
         if prev_frame is None:
@@ -166,7 +166,8 @@ def stream_func(connection_url, run, dimensions, index):
 
         key = cv2.waitKey(wait_val)
 
-        videowritier.write(frame)
+        if record:
+            videowritier.write(frame)
 
         if key == ord("q") or key == 27:
             run.value = False   
@@ -191,7 +192,7 @@ if __name__ == "__main__":
 
         url = camera["url"]
         dimensions =  camera["dimensions"] if "dimensions" in camera else None
-        streams.append({ "process" : Process(target=stream_func, args=(url, run, dimensions, index)), "url" : url} ) # Create processes
+        streams.append({ "process" : Process(target=stream_func, args=(url, run, dimensions, index, False)), "url" : url} ) # Create processes
 
     for stream in streams:
         stream["process"].start() # Start all processes
