@@ -84,10 +84,10 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
         
         blur = cv2.GaussianBlur(gray, (5, 5), 0) # converting grayscale difference to GaussianBlur (easier to find change)
         
-        _, thresh = cv2.threshold(blur, 30, 255, cv2.THRESH_BINARY) # if pixel value is greater than val, it is assigned white(255) otherwise black
-        dilated = cv2.dilate(thresh, None, iterations=4)
+        _, thresh = cv2.threshold(blur, 40, 255, cv2.THRESH_BINARY) # if pixel value is greater than val, it is assigned white(255) otherwise black
+        dilated = cv2.dilate(thresh, None, iterations=2)
 
-        cv2.motempl.updateMotionHistory(dilated, motion_history, timestamp, 4) # 10 is the max history
+        cv2.motempl.updateMotionHistory(dilated, motion_history, timestamp, 2) # 10 is the max history
 
         motion_countours = motion_history.astype(np.uint8)
 
@@ -111,14 +111,14 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
 
         for contour in contours:
             (x1, y1, w, h) = cv2.boundingRect(contour)
-            if cv2.contourArea(contour) < 3000 or cv2.contourArea(contour) > 200000 : 
+            if cv2.contourArea(contour) < 3000 or cv2.contourArea(contour) > 100000 : 
                 continue
             x2 = x1 + w
             y2 = y1 + h
 
             mx = round((x1 + x2) / 2)
     
-            if (abs(mframe - mx) <= 10):
+            if (abs(mframe - mx) <= 25):
                 # wait_val = 0 # To pause the program
                 
                 # Check if it overlaps with something already on the cooldown
@@ -141,7 +141,7 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
                 # , however next frame's motion will still detect a difference, so we flag next frame
                 cooldowns.append({
                     "elapsed_cooldown_frames" : 0,
-                    "goal_cooldown_frames" : 20, # Hard coded cooldown time
+                    "goal_cooldown_frames" : 4, # Hard coded cooldown time
                     "coordinates" : {
                         "x1" : x1,
                         "y1" : y1,
@@ -173,7 +173,7 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
 
         prev_frame = frame.copy()
 
-        cv2.imshow("Motion feed", both)
+        cv2.imshow("Motion feed " + str(index), both)
         
         # cv2.imshow("Motion History", motion_history_img)
         # cv2.imshow("Feed", display_frame)
