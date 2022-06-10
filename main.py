@@ -13,7 +13,7 @@ with open("cameras.json", "r") as file:
 
 streams = []
 
-def stream_func(connection_url, run, dimensions, index, record):
+def stream_func(connection_url : str, run : bool, dimensions, index: int, record: bool):
     cap = cv2.VideoCapture(connection_url)
 
     prev_frame = None
@@ -190,7 +190,7 @@ if __name__ == "__main__":
             if not(use_bool): # Only if the use flag is explicitly set to false is the camera ignored
                 continue
 
-        url = camera["url"]
+        url : str = str(camera["url"])
         dimensions =  camera["dimensions"] if "dimensions" in camera else None
         streams.append({ "process" : Process(target=stream_func, args=(url, run, dimensions, index, False)), "url" : url} ) # Create processes
 
