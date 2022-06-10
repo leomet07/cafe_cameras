@@ -18,6 +18,8 @@ notes.txt
 
 cameras.json
 
+*.json
+
 .idea
 
 *.avi

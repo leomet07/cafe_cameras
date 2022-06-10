@@ -23,10 +23,27 @@ def stream_func(connection_url, run, dimensions, index):
     videowritier = None
 
     timestamp = 0
+    cooldowns = []
 
     while cap.isOpened() and run.value:
-        _, frame = cap.read()
-        timestamp += 1
+        ret, frame = cap.read()
+        if not ret:
+            print("\nEnd of stream.")
+            break
+        # Time stamp incrementation
+        timestamp += 1 # Global timestamp
+
+        cooldowns_to_remove = [] # By index
+        for cooldown_i in range(0, len(cooldowns)):
+            cooldowns[cooldown_i]["elapsed_cooldown_frames"] += 1 # Increment elapsed counter
+            # If cooldown has finally been reached
+            if cooldowns[cooldown_i]["elapsed_cooldown_frames"] > cooldowns[cooldown_i]["goal_cooldown_frames"]:
+                # then remove this entry later
+                cooldowns_to_remove.append(cooldown_i)
+        # Remove AFTER for loop as to keep rest of list/list order intact and not break loop
+        for remove_index in cooldowns_to_remove:
+            del cooldowns[remove_index] 
+        
         if not(dimensions is None):
             if "scale" in dimensions:
                 xscale = float(dimensions["scale"]["x"])
@@ -69,7 +86,7 @@ def stream_func(connection_url, run, dimensions, index):
         _, thresh = cv2.threshold(blur, 30, 255, cv2.THRESH_BINARY) # if pixel value is greater than val, it is assigned white(255) otherwise black
         dilated = cv2.dilate(thresh, None, iterations=4)
 
-        cv2.motempl.updateMotionHistory(dilated, motion_history, timestamp, 3) # 10 is the max history
+        cv2.motempl.updateMotionHistory(dilated, motion_history, timestamp, 10) # 10 is the max history
 
         motion_countours = motion_history.astype(np.uint8)
 
@@ -86,13 +103,53 @@ def stream_func(connection_url, run, dimensions, index):
                 to_detect_contours, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
             )
 
-        
+        wait_val = 1
         display_frame = frame.copy()
         for contour in contours:
-            (x, y, w, h) = cv2.boundingRect(contour)
+            (x1, y1, w, h) = cv2.boundingRect(contour)
             if cv2.contourArea(contour) < 3000 or cv2.contourArea(contour) > 200000 : 
                 continue
-            cv2.rectangle(display_frame, (x, y), (x + w, y + h), (0, 255, 20), 2)
+            x2 = x1 + w
+            y2 = y1 + h
+
+            mx = round((x1 + x2) / 2)
+            mframe = round(frame.shape[1] / 2)
+
+            if (abs(mframe - mx) <= 10):
+                # wait_val = 0 # To pause the program
+                
+                # Check if it overlaps with something already on the cooldown
+                overlap = False
+                for cooldown in cooldowns: 
+                    cooldown_coordinates = cooldown["coordinates"]
+                    cy1 = cooldown_coordinates["y1"]
+                    cy2 = cooldown_coordinates["y2"]
+                    
+                    # IF the line segments overlap
+                    if ((cy1 <= y1 and cy2 >= y1) or (cy2 >= y2 and cy1 <= y2)):
+                        overlap = True
+                        break # out of inner for loop
+                
+
+                if overlap:
+                    break # Not valid to count, so exit
+                print("In middle")
+                # reset motion history
+                motion_history = np.zeros((frame.shape[0], frame.shape[1]), np.float32)
+                # , however next frame's motion will still detect a difference, so we flag next frame
+                cooldowns.append({
+                    "elapsed_cooldown_frames" : 0,
+                    "goal_cooldown_frames" : 20, # Hard coded cooldown time
+                    "coordinates" : {
+                        "x1" : x1,
+                        "y1" : y1,
+                        "x2" : x2,
+                        "y2" : y2,
+                    }
+                })
+                
+                print(mx, mframe, "Timestamp: ", timestamp)
+            cv2.rectangle(display_frame, (x1, y1), (x2, y2), (0, 255, 20), 2)
 
         
         motion_history_img = cv2.merge((motion_countours, motion_countours, motion_countours))
@@ -107,7 +164,7 @@ def stream_func(connection_url, run, dimensions, index):
         # cv2.imshow("Motion History", motion_history_img)
         # cv2.imshow("Feed", display_frame)
 
-        key = cv2.waitKey(1)
+        key = cv2.waitKey(wait_val)
 
         videowritier.write(frame)
 
