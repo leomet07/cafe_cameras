@@ -45,7 +45,7 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
         for remove_index in cooldowns_to_remove:
             del cooldowns[remove_index] 
         
-        if not(dimensions is None):
+        if not(dimensions is None) and not(dimensions == {}):
             if "scale" in dimensions:
                 xscale = float(dimensions["scale"]["x"])
                 yscale = float(dimensions["scale"]["x"])
@@ -67,11 +67,11 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
 
             frame = frame[top_left_point["y"]:top_left_point["y"] + height, top_left_point["x"]:top_left_point["x"] + width]
 
-            if motion_history is None:
-                motion_history = np.zeros((frame.shape[0], frame.shape[1]), np.float32)
+        if motion_history is None:
+            motion_history = np.zeros((frame.shape[0], frame.shape[1]), np.float32)
 
-            if record and videowritier is None:
-                videowritier = cv2.VideoWriter("output_" + str(index) + ".avi" ,cv2.VideoWriter_fourcc('M','J','P','G'), 10, (frame.shape[1],frame.shape[0]))
+        if record and videowritier is None:
+            videowritier = cv2.VideoWriter("output_" + str(index) + ".avi" ,cv2.VideoWriter_fourcc('M','J','P','G'), 10, (frame.shape[1],frame.shape[0]))
 
         if prev_frame is None:
             prev_frame = frame
