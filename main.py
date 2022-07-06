@@ -13,7 +13,7 @@ with open("cameras.json", "r") as file:
 
 streams = []
 
-def stream_func(connection_url : str, run : bool, dimensions, index: int, record: bool, pedestrian_count : Array):
+def stream_func(connection_url : str, run : bool, dimensions, index: int, record: bool, pedestrian_count : Array, preview : bool):
     cap = cv2.VideoCapture(connection_url)
 
     prev_frame = None
@@ -155,43 +155,60 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
                 print("Passed pedestrians: ", pedestrian_count[index])
             cv2.rectangle(display_frame, (x1, y1), (x2, y2), (0, 255, 20), 2)
 
-        # Draw text onto display frame
-        display_frame= cv2.putText(display_frame, text=str("Pedestrians passed: " + str(pedestrian_count[index])), org=(20, frame.shape[0] - 30), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0),thickness=2)
-        # Horizontal midpoint
-        display_frame = cv2.line(display_frame, (mframe, 0), (mframe, frame.shape[0] - 1), (0, 0, 255), 1)
-
-        
-
-        motion_history_img = cv2.merge((motion_countours, motion_countours, motion_countours))
-        
-        
-        both = np.concatenate((display_frame, motion_history_img), axis=0)
-        # Splitting the middle of the two frames
-        both = cv2.line(both, (0, frame.shape[0] - 1 ), (both.shape[1] - 1, frame.shape[0] - 1), (255, 0, 0), 1)
-
-        both = cv2.resize(both, (0, 0), fx=0.7, fy=0.7)
-
         prev_frame = frame.copy()
 
-        cv2.imshow("Motion feed " + str(index), both)
-        
-        # cv2.imshow("Motion History", motion_history_img)
-        # cv2.imshow("Feed", display_frame)
+        if timestamp % 150 == 0: # Periodic saving to file
+            output_to_file(pedestrian_count)
 
-        key = cv2.waitKey(wait_val)
+        if preview:
+            # Draw text onto display frame
+            display_frame= cv2.putText(display_frame, text=str("Pedestrians passed: " + str(pedestrian_count[index])), org=(20, frame.shape[0] - 30), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0),thickness=2)
+            # Horizontal midpoint
+            display_frame = cv2.line(display_frame, (mframe, 0), (mframe, frame.shape[0] - 1), (0, 0, 255), 1)
+
+            
+
+            motion_history_img = cv2.merge((motion_countours, motion_countours, motion_countours))
+            
+            
+            both = np.concatenate((display_frame, motion_history_img), axis=0)
+            # Splitting the middle of the two frames
+            both = cv2.line(both, (0, frame.shape[0] - 1 ), (both.shape[1] - 1, frame.shape[0] - 1), (255, 0, 0), 1)
+
+            both = cv2.resize(both, (0, 0), fx=0.7, fy=0.7)
+
+            
+
+            cv2.imshow("Motion feed " + str(index), both)
+            
+            # cv2.imshow("Motion History", motion_history_img)
+            # cv2.imshow("Feed", display_frame)
+
+            key = cv2.waitKey(wait_val)
+
+            
+
+            if key == ord("q") or key == 27:
+                run.value = False   
 
         if record:
             videowritier.write(frame)
-
-        if key == ord("q") or key == 27:
-            run.value = False   
-
 
     cap.release()
 
     cv2.destroyAllWindows()
 
-    
+def output_to_file(pedestrian_count):
+    with open("output.json", "w") as outputfile:
+        outputdict = []
+        for index in range(len(pedestrian_count)):
+            count = pedestrian_count[index]
+            camera = cameras[index]
+            outputdict.append({
+                "url" : camera["url"],
+                "count" : count
+            })
+        json.dump(outputdict, outputfile)
 
 
 if __name__ == "__main__":
@@ -207,7 +224,7 @@ if __name__ == "__main__":
 
         url : str = str(camera["url"])
         dimensions =  camera["dimensions"] if "dimensions" in camera else None
-        streams.append({ "process" : Process(target=stream_func, args=(url, run, dimensions, index, False, pedestrian_count)), "url" : url} ) # Create processes
+        streams.append({ "process" : Process(target=stream_func, args=(url, run, dimensions, index, False, pedestrian_count, False)), "url" : url} ) # Create processes
 
     for stream in streams:
         stream["process"].start() # Start all processes
@@ -216,13 +233,4 @@ if __name__ == "__main__":
         stream["process"].join() # Wait for all processes to finish before terminating program
         # print("Stream with url of " + stream["url"] + " finished.")
 
-    with open("output.json", "w") as outputfile:
-        outputdict = []
-        for index in range(len(pedestrian_count)):
-            count = pedestrian_count[index]
-            camera = cameras[index]
-            outputdict.append({
-                "url" : camera["url"],
-                "count" : count
-            })
-        json.dump(outputdict, outputfile)
+    output_to_file(pedestrian_count)
