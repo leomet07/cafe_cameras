@@ -54,6 +54,10 @@ An example `cameras.json` :
 ]
 ```
 
+## Random information
+
+The start and end times are recording in UTC time.
+
 ## Privacy Implications
 
 While this project does "track" pedestrians, it does not record induvidual data or any identifiable information. It would record a moving blob and a pedestrian in the same way. This project is also FOSS, and the source code is public. You may check for yourselves!

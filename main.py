@@ -5,6 +5,7 @@ load_dotenv()
 
 import cv2 # opencv-contrib-python is needed !!
 import json
+from datetime import datetime
 
 cv2_version = cv2.__version__
 
@@ -17,6 +18,7 @@ with open("cameras.json", "r") as file:
     cameras = json.load(file)
 
 streams = []
+START_TIME = datetime.utcnow()
 
 def stream_func(connection_url : str, run : bool, dimensions, index: int, record: bool, pedestrian_count : Array, preview : bool):
     cap = cv2.VideoCapture(connection_url)
@@ -208,6 +210,7 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
     cv2.destroyAllWindows()
 
 def output_to_file(pedestrian_count):
+    END_TIME = datetime.utcnow()
     with open("output.json", "w") as outputfile:
         outputdict = []
         for index in range(len(pedestrian_count)):
@@ -215,9 +218,11 @@ def output_to_file(pedestrian_count):
             camera = cameras[index]
             outputdict.append({
                 "url" : camera["url"],
-                "count" : count
+                "count" : count,
+                "end" : str(END_TIME),
+                "start" : str(START_TIME)
             })
-        json.dump(outputdict, outputfile)
+        json.dump(outputdict, outputfile, indent=4)
 
 
 if __name__ == "__main__":
