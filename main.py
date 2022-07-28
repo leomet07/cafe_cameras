@@ -1,7 +1,12 @@
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+
 import cv2 # opencv-contrib-python is needed !!
 import json
-cv2_version = cv2.__version__
 
+cv2_version = cv2.__version__
 
 import numpy as np
 from multiprocessing import Process, Value, Array
@@ -43,7 +48,11 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
                 cooldowns_to_remove.append(cooldown_i)
         # Remove AFTER for loop as to keep rest of list/list order intact and not break loop
         for remove_index in cooldowns_to_remove:
-            del cooldowns[remove_index] 
+            try:
+                del cooldowns[remove_index] 
+            except IndexError:
+                print("Trying to delete a cooldown that doesn't exist??")
+
         
         if not(dimensions is None) and not(dimensions == {}):
             if "scale" in dimensions:
@@ -141,7 +150,7 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
                 # , however next frame's motion will still detect a difference, so we flag next frame
                 cooldowns.append({
                     "elapsed_cooldown_frames" : 0,
-                    "goal_cooldown_frames" : 4, # Hard coded cooldown time
+                    "goal_cooldown_frames" : 8, # Hard coded cooldown time
                     "coordinates" : {
                         "x1" : x1,
                         "y1" : y1,
@@ -212,6 +221,11 @@ def output_to_file(pedestrian_count):
 
 
 if __name__ == "__main__":
+    preview = False
+    if str(os.getenv("DEV")) == "true":
+        preview = True
+
+
     run = Value('b', True) # Global variable for controlling if the program is running
     pedestrian_count = Array('i', [0] * len(cameras))
 
@@ -224,7 +238,7 @@ if __name__ == "__main__":
 
         url : str = str(camera["url"])
         dimensions =  camera["dimensions"] if "dimensions" in camera else None
-        streams.append({ "process" : Process(target=stream_func, args=(url, run, dimensions, index, False, pedestrian_count, False)), "url" : url} ) # Create processes
+        streams.append({ "process" : Process(target=stream_func, args=(url, run, dimensions, index, False, pedestrian_count, preview)), "url" : url} ) # Create processes
 
     for stream in streams:
         stream["process"].start() # Start all processes

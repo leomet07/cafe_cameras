@@ -27,3 +27,5 @@ cameras.json
 *.mp4
 
 *.mpv
+
+.env
