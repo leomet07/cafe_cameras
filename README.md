@@ -32,9 +32,11 @@ python main.py
 
 ## Environment Variables
 
-To run this project, you will NOT need to add environment variables to your .env file
+To run this project, you WILL need to add environment variables to your .env file
 
-Instead, add camera configuration to a `cameras.json` file
+Specify a MongoDB URI under `MONGODB_URI` .
+
+**_Also_**, add camera configuration to a `cameras.json` file
 
 An example `cameras.json` :
 

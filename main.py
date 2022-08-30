@@ -12,13 +12,16 @@ cv2_version = cv2.__version__
 import numpy as np
 from multiprocessing import Process, Value, Array
 
+DEV = str(os.getenv("DEV")) == "true"
+
+from db import output_to_db
+
 cameras = []
 
 with open("cameras.json", "r") as file:
     cameras = json.load(file)
 
 streams = []
-START_TIME = datetime.utcnow()
 
 def stream_func(connection_url : str, run : bool, dimensions, index: int, record: bool, pedestrian_count : Array, preview : bool):
     cap = cv2.VideoCapture(connection_url)
@@ -169,7 +172,7 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
         prev_frame = frame.copy()
 
         if timestamp % 150 == 0: # Periodic saving to file
-            output_to_file(pedestrian_count)
+            output_to_db(pedestrian_count, cameras)
 
         if preview:
             # Draw text onto display frame
@@ -209,25 +212,11 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
 
     cv2.destroyAllWindows()
 
-def output_to_file(pedestrian_count):
-    END_TIME = datetime.utcnow()
-    with open("output.json", "w") as outputfile:
-        outputdict = []
-        for index in range(len(pedestrian_count)):
-            count = pedestrian_count[index]
-            camera = cameras[index]
-            outputdict.append({
-                "url" : camera["url"],
-                "count" : count,
-                "end" : str(END_TIME),
-                "start" : str(START_TIME)
-            })
-        json.dump(outputdict, outputfile, indent=4)
 
 
 if __name__ == "__main__":
     preview = False
-    if str(os.getenv("DEV")) == "true":
+    if DEV:
         preview = True
 
 
@@ -252,4 +241,4 @@ if __name__ == "__main__":
         stream["process"].join() # Wait for all processes to finish before terminating program
         # print("Stream with url of " + stream["url"] + " finished.")
 
-    output_to_file(pedestrian_count)
+    output_to_db(pedestrian_count, cameras)
