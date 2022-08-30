@@ -1,20 +1,18 @@
-import os
+from multiprocessing import Process, Value, Array
 from dotenv import load_dotenv
 load_dotenv()
+from db import output_to_db, initialize_db_for_process
 
-
+import os
 import cv2 # opencv-contrib-python is needed !!
+import numpy as np
 import json
-from datetime import datetime
+
 
 cv2_version = cv2.__version__
 
-import numpy as np
-from multiprocessing import Process, Value, Array
 
 DEV = str(os.getenv("DEV")) == "true"
-
-from db import output_to_db, initialize_db_for_process
 
 cameras = []
 
@@ -59,8 +57,7 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
                 del cooldowns[remove_index] 
             except IndexError:
                 print("Trying to delete a cooldown that doesn't exist??")
-
-        
+                
         if not(dimensions is None) and not(dimensions == {}):
             if "scale" in dimensions:
                 xscale = float(dimensions["scale"]["x"])
@@ -143,7 +140,7 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
                     cooldown_coordinates = cooldown["coordinates"]
                     cy1 = cooldown_coordinates["y1"]
                     cy2 = cooldown_coordinates["y2"]
-                    
+                                       
                     # IF the line segments overlap
                     if ((cy1 <= y1 and cy2 >= y1) or (cy2 >= y2 and cy1 <= y2)):
                         overlap = True
@@ -193,16 +190,12 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
 
             both = cv2.resize(both, (0, 0), fx=0.7, fy=0.7)
 
-            
 
-            cv2.imshow("Motion feed " + str(index), both)
-            
-            # cv2.imshow("Motion History", motion_history_img)
-            # cv2.imshow("Feed", display_frame)
+            cv2.imshow("Motion feed " + str(index), both) # Includes motion history img            
+            # cv2.imshow("Motion History Frame" + str(index), motion_history_img)
+            # cv2.imshow("Display Frame " + str(index), display_frame)
 
             key = cv2.waitKey(wait_val)
-
-            
 
             if key == ord("q") or key == 27:
                 run.value = False   
@@ -231,12 +224,12 @@ if __name__ == "__main__":
         camera = cameras[index]
         if "use" in camera: 
             use_bool = bool(camera["use"]) 
-            if not(use_bool): # Only if the use flag is explicitly set to false is the camera ignored
+            if not use_bool: # Only if the use flag is explicitly set to false is the camera ignored
                 continue
 
         url : str = str(camera["url"])
         dimensions =  camera["dimensions"] if "dimensions" in camera else None
-        streams.append({ "process" : Process(target=stream_func, args=(url, run, dimensions, index, False, pedestrian_count, preview)), "url" : url} ) # Create processes
+        streams.append({"process" : Process(target=stream_func, args=(url, run, dimensions, index, False, pedestrian_count, preview)),"url" : url} ) # Create processes
 
     for stream in streams:
         stream["process"].start() # Start all processes
