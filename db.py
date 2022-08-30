@@ -9,12 +9,15 @@ import pymongo
 
 CONNECTION_STR = os.getenv("MONGODB_URI")
 
-client = pymongo.MongoClient(CONNECTION_STR)
-print("Connected to database!")
-db = client.serverlogs
-logs_collection = db.logs
+def initialize_db_for_process():
+    client = pymongo.MongoClient(CONNECTION_STR)
+    print("Connected to database!")
+    db = client.serverlogs
+    logs_collection = db.logs
 
-def output_to_db(pedestrian_count, cameras):
+    return logs_collection
+
+def output_to_db(pedestrian_count, cameras, logs_collection):
     END_TIME = datetime.utcnow()
     
     entries = []

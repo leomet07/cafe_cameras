@@ -14,7 +14,7 @@ from multiprocessing import Process, Value, Array
 
 DEV = str(os.getenv("DEV")) == "true"
 
-from db import output_to_db
+from db import output_to_db, initialize_db_for_process
 
 cameras = []
 
@@ -24,6 +24,8 @@ with open("cameras.json", "r") as file:
 streams = []
 
 def stream_func(connection_url : str, run : bool, dimensions, index: int, record: bool, pedestrian_count : Array, preview : bool):
+    db_connection = initialize_db_for_process()
+    
     cap = cv2.VideoCapture(connection_url)
 
     prev_frame = None
@@ -172,7 +174,7 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
         prev_frame = frame.copy()
 
         if timestamp % 150 == 0: # Periodic saving to file
-            output_to_db(pedestrian_count, cameras)
+            output_to_db(pedestrian_count, cameras, db_connection)
 
         if preview:
             # Draw text onto display frame
@@ -215,6 +217,8 @@ def stream_func(connection_url : str, run : bool, dimensions, index: int, record
 
 
 if __name__ == "__main__":
+    global_connection = initialize_db_for_process()
+
     preview = False
     if DEV:
         preview = True
@@ -241,4 +245,4 @@ if __name__ == "__main__":
         stream["process"].join() # Wait for all processes to finish before terminating program
         # print("Stream with url of " + stream["url"] + " finished.")
 
-    output_to_db(pedestrian_count, cameras)
+    output_to_db(pedestrian_count, cameras, global_connection)
